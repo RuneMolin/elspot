@@ -1,19 +1,26 @@
 <template>
-  <div class="container is-fullhd mt-1" v-if="store.current">
-    <section class="hero is-info">
+  <div class="container">
+    <section class="hero is-info" v-if="store.current">
       <div class="hero-body">
-        <p class="subtitle">Prisen for en kWh lige nu:</p>
-        <p class="title">{{ store.current }} øre</p>
+        <p class="subtitle has-text-centered">Prisen lige nu</p>
+        <p class="title has-text-centered">{{ store.current }} øre/kWH</p>
       </div>
     </section>
-    <section class="section is-medium">
-      <h1 class="title">De næste 24 timer: {{ store.lowest.price }} øre</h1>
-      <h2 class="subtitle mt-2">
-        kl. {{ store.lowest.start }} - {{ store.lowest.end }} i
-        {{ store.lowest.day }}
-      </h2>
-    </section>
-    <p>{{ store.lastUpdated }}</p>
+    <div class="box">
+      <p class="is-size-5 has-text-centered">Priser de næste 24 timer</p>
+      <table class="table is-striped is-fullwidth">
+        <thead>
+          <th>Tidspunkt</th>
+          <th>Øre/kWH</th>
+        </thead>
+        <tbody>
+          <tr v-for="price in store.summaryTable" :key="price.time">
+            <td>{{ price.time }}</td>
+            <td>{{ price.price }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 

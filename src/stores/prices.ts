@@ -6,6 +6,7 @@ import moment from "moment";
 interface SpotPrice {
   HourDK: string;
   SpotPriceDKK: number;
+  SpotPriceEUR: number;
 }
 
 interface ElSpotData {
@@ -18,14 +19,11 @@ interface ElSpotResponse {
 
 interface State {
   prices: SpotPrice[];
-  lastUpdate: moment.Moment | null;
 }
 
-interface LowestPriceDetails {
+interface PriceSummary {
+  time: string;
   price: string;
-  start: string;
-  end: string;
-  day: string;
 }
 
 const api = axios.create({
@@ -38,12 +36,11 @@ const api = axios.create({
 
 const now = (): moment.Moment => moment();
 
-const leftpad = (n: number): string => n.toString().padStart(2, "0");
+const scaleAndFormat = (n: number): string =>
+  (n / 10).toFixed(2).padStart(2, "0");
 
-const scaleAndFormat = (n: number): string => (n / 10).toFixed(2);
-
-const formatDate = (aDate: moment.Moment): string => {
-  return aDate.format("YYYY-MM-DDTHH:mm");
+const formatDate = (aDate: moment.Moment, short = false): string => {
+  return short ? aDate.format("ddd HH:mm") : aDate.format("YYYY-MM-DDTHH:mm");
 };
 
 const findCurrentPrice = (prices: SpotPrice[]): string => {
@@ -59,40 +56,23 @@ const findCurrentPrice = (prices: SpotPrice[]): string => {
   return "";
 };
 
-const findLowest = (spotPrices: SpotPrice[]): LowestPriceDetails => {
-  const sortedByPrice = spotPrices
-    .slice()
-    .sort((a, b) => a.SpotPriceDKK - b.SpotPriceDKK);
-
-  //console.log(sortedByPrice);
-
-  const lowestPrice = sortedByPrice[0];
-
-  return {
-    price: scaleAndFormat(lowestPrice.SpotPriceDKK),
-    start: leftpad(moment(lowestPrice.HourDK).minute()),
-    end: leftpad(moment(lowestPrice.HourDK).minute() + 1), // TODO not quite right
-    day: moment(lowestPrice.HourDK).isAfter(now()) ? "morgen" : "dag",
-  };
-};
-
 export const usePriceStore = defineStore("prices", {
   state: (): State => {
     return {
       prices: [],
-      lastUpdate: null,
     };
   },
 
   getters: {
-    current(state) {
-      return findCurrentPrice(state.prices);
-    },
-    lowest(state): LowestPriceDetails {
-      return findLowest(state.prices);
-    },
-    lastUpdated(state): string {
-      return state.lastUpdate ? formatDate(state.lastUpdate) : "";
+    current: (state: State): string => findCurrentPrice(state.prices),
+
+    summaryTable: (state: State): PriceSummary[] => {
+      return state.prices
+        .filter((price) => moment(price.HourDK).isAfter(now()))
+        .map((price) => ({
+          time: formatDate(moment(price.HourDK), true),
+          price: scaleAndFormat(price.SpotPriceDKK),
+        }));
     },
   },
 
@@ -105,7 +85,7 @@ export const usePriceStore = defineStore("prices", {
         operationName: "Dataset",
         variables: {},
         // prettier-ignore
-        query: `query Dataset {elspotprices(where:{PriceArea:{_eq: "DK2"},HourDK:{_gte:"${formatDate(from)}",_lte:"${formatDate(to)}"}} order_by:{HourDK: asc} limit:100 offset:0) {HourDK SpotPriceDKK }}`,
+        query: `query Dataset {elspotprices(where:{PriceArea:{_eq: "DK2"},HourDK:{_gte:"${formatDate(from)}",_lte:"${formatDate(to)}"}} order_by:{HourDK: asc} limit:100 offset:0) {HourDK SpotPriceDKK SpotPriceEUR}}`,
       };
 
       api
@@ -113,8 +93,12 @@ export const usePriceStore = defineStore("prices", {
         .then((response) => {
           const { data } = response;
 
-          this.prices = data.data.elspotprices;
-          this.lastUpdate = now();
+          this.prices = data.data.elspotprices.map((spotprice) => ({
+            HourDK: spotprice.HourDK,
+            SpotPriceEUR: spotprice.SpotPriceEUR,
+            SpotPriceDKK:
+              spotprice.SpotPriceDKK || spotprice.SpotPriceEUR * 7.54,
+          }));
         });
 
       setInterval(this.updatePrices, 300000); // 5 minutes
