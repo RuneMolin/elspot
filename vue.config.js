@@ -1,8 +1,8 @@
 module.exports = {
   pages: {
     index: {
-      entry: "src/main.ts",
-      title: "El prisen",
-    },
-  },
-};
+      entry: 'src/main.ts',
+      title: 'El prisen'
+    }
+  }
+}

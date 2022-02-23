@@ -25,17 +25,17 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import { usePriceStore } from "@/stores/prices";
+import { defineComponent } from 'vue'
+import { usePriceStore } from '@/stores/prices'
 
 export default defineComponent({
-  name: "Elspot",
-  setup() {
-    const store = usePriceStore();
+  name: 'Elspot',
+  setup () {
+    const store = usePriceStore()
 
     return {
-      store,
-    };
-  },
-});
+      store
+    }
+  }
+})
 </script>

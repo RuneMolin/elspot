@@ -3,19 +3,19 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import Elspot from "./components/Elspot.vue";
-import { usePriceStore } from "@/stores/prices";
+import { defineComponent } from 'vue'
+import Elspot from './components/Elspot.vue'
+import { usePriceStore } from '@/stores/prices'
 
 export default defineComponent({
-  name: "App",
+  name: 'App',
   components: {
-    Elspot,
+    Elspot
   },
-  setup() {
-    const store = usePriceStore();
+  setup () {
+    const store = usePriceStore()
 
-    store.updatePrices();
-  },
-});
+    store.updatePrices()
+  }
+})
 </script>
