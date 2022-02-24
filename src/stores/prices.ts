@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import 'moment/locale/da'
-import moment from 'moment'
+import { DateTime } from 'luxon';
 
 interface SpotPrice {
   HourDK: string;
@@ -34,21 +33,22 @@ const api = axios.create({
   }
 })
 
-const now = (): moment.Moment => moment()
+const now = (): DateTime => DateTime.now();
 
 const scaleAndFormat = (n: number): string =>
   (n / 10).toFixed(2).padStart(2, '0')
 
-const formatDate = (aDate: moment.Moment, short = false): string => {
-  return short ? aDate.format('ddd HH:mm') : aDate.format('YYYY-MM-DDTHH:mm')
+const formatDate = (aDate: DateTime, short = false): string => {
+  return short ? aDate.setLocale('da').toFormat('EEE HH:mm') : aDate.toFormat("y-MM-dd'T'HH:mm");
+}
+
+const parseDate = (str: string): DateTime => {
+  return DateTime.fromISO(str);
 }
 
 const findCurrentPrice = (prices: SpotPrice[]): string => {
   for (let n = 0; n < prices.length; n++) {
-    if (
-      now().isAfter(moment(prices[n].HourDK)) &&
-      now().isBefore(moment(prices[n + 1].HourDK))
-    ) {
+    if (now() > parseDate(prices[n].HourDK) && now() < parseDate(prices[n + 1].HourDK)) {
       return scaleAndFormat(prices[n].SpotPriceDKK)
     }
   }
@@ -68,9 +68,9 @@ export const usePriceStore = defineStore('prices', {
 
     summaryTable: (state: State): PriceSummary[] => {
       return state.prices
-        .filter((price) => moment(price.HourDK).isAfter(now()))
+        .filter((price) => parseDate(price.HourDK) > now())
         .map((price) => ({
-          time: formatDate(moment(price.HourDK), true),
+          time: formatDate(parseDate(price.HourDK), true),
           price: scaleAndFormat(price.SpotPriceDKK)
         }))
     }
@@ -78,13 +78,12 @@ export const usePriceStore = defineStore('prices', {
 
   actions: {
     updatePrices () {
-      const from = now().subtract(1, 'hour')
-      const to = now().add(24, 'hours')
+      const from = now().minus({ hours: 1})
+      const to = now().plus({hours: 24})
 
       const body = {
         operationName: 'Dataset',
         variables: {},
-        // prettier-ignore
         query: `query Dataset {elspotprices(where:{PriceArea:{_eq: "DK2"},HourDK:{_gte:"${formatDate(from)}",_lte:"${formatDate(to)}"}} order_by:{HourDK: asc} limit:100 offset:0) {HourDK SpotPriceDKK SpotPriceEUR}}`
       }
 
