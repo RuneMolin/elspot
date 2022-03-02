@@ -1,23 +1,12 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
-import { DateTime } from 'luxon';
-
-interface SpotPrice {
-  HourDK: string;
-  SpotPriceDKK: number;
-  SpotPriceEUR: number;
-}
-
-interface ElSpotData {
-  elspotprices: SpotPrice[];
-}
-
-interface ElSpotResponse {
-  data: ElSpotData;
-}
+import { DateTime } from 'luxon'
+import EnergiDataService from '@/services/EnergiDataService'
+import { Zone, SpotPrice } from '@/types'
 
 interface State {
   prices: SpotPrice[];
+  zone: Zone;
+  intervalHandler?: number;
 }
 
 interface PriceSummary {
@@ -25,25 +14,17 @@ interface PriceSummary {
   price: string;
 }
 
-const api = axios.create({
-  baseURL: 'https://data-api.energidataservice.dk',
-  headers: {
-    'content-type': 'application/json',
-    timeout: 2000
-  }
-})
-
-const now = (): DateTime => DateTime.now();
+const now = (): DateTime => DateTime.now()
 
 const scaleAndFormat = (n: number): string =>
   (n / 10).toFixed(2).padStart(2, '0')
 
-const formatDate = (aDate: DateTime, short = false): string => {
-  return short ? aDate.setLocale('da').toFormat('EEE HH:mm') : aDate.toFormat("y-MM-dd'T'HH:mm");
+const formatDate = (aDate: DateTime): string => {
+  return aDate.setLocale('da').toFormat('EEE HH:mm')
 }
 
 const parseDate = (str: string): DateTime => {
-  return DateTime.fromISO(str);
+  return DateTime.fromISO(str)
 }
 
 const findCurrentPrice = (prices: SpotPrice[]): string => {
@@ -56,10 +37,13 @@ const findCurrentPrice = (prices: SpotPrice[]): string => {
   return ''
 }
 
+const service = new EnergiDataService()
+
 export const usePriceStore = defineStore('prices', {
   state: (): State => {
     return {
-      prices: []
+      prices: [],
+      zone: Zone.East
     }
   },
 
@@ -70,37 +54,41 @@ export const usePriceStore = defineStore('prices', {
       return state.prices
         .filter((price) => parseDate(price.HourDK) > now())
         .map((price) => ({
-          time: formatDate(parseDate(price.HourDK), true),
+          time: formatDate(parseDate(price.HourDK)),
           price: scaleAndFormat(price.SpotPriceDKK)
         }))
     }
   },
 
   actions: {
-    updatePrices () {
-      const from = now().minus({ hours: 1})
-      const to = now().plus({hours: 24})
-
-      const body = {
-        operationName: 'Dataset',
-        variables: {},
-        query: `query Dataset {elspotprices(where:{PriceArea:{_eq: "DK2"},HourDK:{_gte:"${formatDate(from)}",_lte:"${formatDate(to)}"}} order_by:{HourDK: asc} limit:100 offset:0) {HourDK SpotPriceDKK SpotPriceEUR}}`
+    setZone (aZone: Zone) {
+      if (this.zone !== aZone) {
+        clearInterval(this.intervalHandler)
+        this.zone = aZone
+        this.updatePrices()
       }
+    },
+    updatePrices () {
+      const from = now().minus({ hours: 1 })
+      const to = now().plus({ hours: 24 })
 
-      api
-        .post<ElSpotResponse>('/v1/graphql', JSON.stringify(body))
-        .then((response) => {
-          const { data } = response
-
-          this.prices = data.data.elspotprices.map((spotprice) => ({
-            HourDK: spotprice.HourDK,
-            SpotPriceEUR: spotprice.SpotPriceEUR,
-            SpotPriceDKK:
-              spotprice.SpotPriceDKK || spotprice.SpotPriceEUR * 7.54
-          }))
+      service.getEnergiData(this.zone, from, to)
+        .then(data => {
+          if (data.error) {
+            console.log('returned error', data.error) // TODO
+          } else if (data.elspotprices) {
+            this.prices = data.elspotprices.map(spotprice => (
+              {
+                HourDK: spotprice.HourDK,
+                SpotPriceEUR: spotprice.SpotPriceEUR,
+                SpotPriceDKK:
+                spotprice.SpotPriceDKK || spotprice.SpotPriceEUR * 7.54
+              }
+            ))
+          }
         })
 
-      setInterval(this.updatePrices, 300000) // 5 minutes
+      this.intervalHandler = setInterval(this.updatePrices, 300000) // 5 minutes
     }
   }
 })

@@ -29,7 +29,7 @@ import { defineComponent } from 'vue'
 import { usePriceStore } from '@/stores/prices'
 
 export default defineComponent({
-  name: 'Elspot',
+  name: 'ElSpot',
   setup () {
     const store = usePriceStore()
 

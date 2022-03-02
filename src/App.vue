@@ -1,16 +1,16 @@
 <template>
-  <Elspot />
+  <ElSpot />
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import Elspot from '@/components/Elspot.vue'
+import ElSpot from '@/components/Elspot.vue'
 import { usePriceStore } from '@/stores/prices'
 
 export default defineComponent({
   name: 'App',
   components: {
-    Elspot
+    ElSpot
   },
   setup () {
     const store = usePriceStore()
