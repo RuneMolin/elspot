@@ -4,6 +4,30 @@
       <div class="hero-body">
         <p class="subtitle has-text-centered">Prisen lige nu</p>
         <p class="title has-text-centered">{{ store.current }} øre/kWH</p>
+        <div class="columns">
+          <div class="column">
+            <label class="radio">
+              <input
+                type="radio"
+                name="zone"
+                :checked="!store.isWestZone"
+                @change="store.setZone('DK2')"
+              />
+              Øst for Storebælt
+            </label>
+          </div>
+          <div class="column">
+            <label class="radio">
+              <input
+                type="radio"
+                name="zone"
+                :checked="store.isWestZone"
+                @change="store.setZone('DK1')"
+              />
+              Vest for Storebælt
+            </label>
+          </div>
+        </div>
       </div>
     </section>
     <div class="box">
@@ -30,7 +54,7 @@ import { usePriceStore } from '@/stores/prices'
 
 export default defineComponent({
   name: 'ElSpot',
-  setup () {
+  setup() {
     const store = usePriceStore()
 
     return {

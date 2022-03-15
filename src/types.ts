@@ -17,8 +17,3 @@ export interface PriceSummary {
   time: string;
   price: string;
 }
-
-export enum Zone {
-  West = 'DK1',
-  East = 'DK2'
-}

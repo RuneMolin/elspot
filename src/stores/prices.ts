@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { DateTime } from 'luxon'
 import EnergiDataService from '@/services/EnergiDataService'
-import { Zone, SpotPrice } from '@/types'
+import { SpotPrice } from '@/types'
 
 interface State {
   prices: SpotPrice[];
-  zone: Zone;
+  zone: 'DK1' | 'DK2';
   intervalHandler?: number;
 }
 
@@ -43,12 +43,14 @@ export const usePriceStore = defineStore('prices', {
   state: (): State => {
     return {
       prices: [],
-      zone: Zone.East
+      zone: 'DK2'
     }
   },
 
   getters: {
     current: (state: State): string => findCurrentPrice(state.prices),
+
+    isWestZone: (state: State): boolean => state.zone === 'DK1',
 
     summaryTable: (state: State): PriceSummary[] => {
       return state.prices
@@ -61,7 +63,7 @@ export const usePriceStore = defineStore('prices', {
   },
 
   actions: {
-    setZone (aZone: Zone) {
+    setZone (aZone: 'DK1' | 'DK2') {
       if (this.zone !== aZone) {
         clearInterval(this.intervalHandler)
         this.zone = aZone
