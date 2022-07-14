@@ -8,12 +8,8 @@ interface SpotPrice {
   SpotPriceEUR: number;
 }
 
-interface ElSpotData {
-  elspotprices: SpotPrice[];
-}
-
 interface ElSpotResponse {
-  data: ElSpotData;
+  records: SpotPrice[];
 }
 
 interface State {
@@ -26,9 +22,12 @@ interface PriceSummary {
 }
 
 const api = axios.create({
-  baseURL: 'https://data-api.energidataservice.dk',
+  baseURL: 'https://api.energidataservice.dk',
   headers: {
-    'content-type': 'application/json',
+    'Content-Type': 'application/json',
+    'Sec-Fetch-Mode': 'no-cors',
+    'Sec-Fetch-Dest': 'script',
+    'Sec-Fetch-Site': 'cross-site',
     timeout: 2000
   }
 })
@@ -81,18 +80,21 @@ export const usePriceStore = defineStore('prices', {
       const from = now().minus({ hours: 1})
       const to = now().plus({hours: 24})
 
-      const body = {
-        operationName: 'Dataset',
-        variables: {},
-        query: `query Dataset {elspotprices(where:{PriceArea:{_eq: "DK2"},HourDK:{_gte:"${formatDate(from)}",_lte:"${formatDate(to)}"}} order_by:{HourDK: asc} limit:100 offset:0) {HourDK SpotPriceDKK SpotPriceEUR}}`
+      const params = {
+        start: formatDate(from),
+        end: formatDate(to),
+        columns: 'HourDK,SpotPriceDKK,SpotPriceEUR',
+        sort: 'HourDK',
+        offset: 0,
+        limit: 100
       }
 
       api
-        .post<ElSpotResponse>('/v1/graphql', JSON.stringify(body))
+        .get<ElSpotResponse>('/dataset/Elspotprices', { params })
         .then((response) => {
           const { data } = response
 
-          this.prices = data.data.elspotprices.map((spotprice) => ({
+          this.prices = data.records.map((spotprice) => ({
             HourDK: spotprice.HourDK,
             SpotPriceEUR: spotprice.SpotPriceEUR,
             SpotPriceDKK:
